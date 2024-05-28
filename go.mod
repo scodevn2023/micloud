@@ -1,4 +1,4 @@
-module github.com/scodevn2023/micloud
+module micloud
 
 go 1.22.3
 
