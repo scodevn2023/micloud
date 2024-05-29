@@ -658,3 +658,21 @@ func New(country string, username string, password string) *Client {
 	c.httpClient = &http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}}
 	return c
 }
+
+// homeRequest gửi một yêu cầu đến endpoint home RPC.
+func (c *Client) rpcRequest(ctx context.Context, did, method string, params map[string]any) (result json.RawMessage, err error) {
+	data := map[string]any{
+		"id":        1,
+		"method":    method,
+		"accessKey": "IOS00026747c5acafc2",
+		"params":    params,
+	}
+	var (
+		ret *Response
+	)
+	ret = c.Request(ctx, newRequest("/home/rpc/"+did, data))
+	if !ret.IsOK() {
+		err = ret.Error
+	}
+	return
+}
