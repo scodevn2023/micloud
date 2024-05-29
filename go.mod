@@ -4,7 +4,7 @@ go 1.22.3
 
 require (
 	fyne.io/fyne/v2 v2.4.5
-	github.com/scodevn2023/micloud v0.8.0
+	github.com/scodevn2023/micloud v0.9.0
 )
 
 require (
