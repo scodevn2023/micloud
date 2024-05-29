@@ -7,6 +7,7 @@ import (
 	"log"
 
 	"github.com/scodevn2023/micloud/cloud"
+
 	"github.com/scodevn2023/micloud/types"
 
 	"fyne.io/fyne/v2"
@@ -260,7 +261,7 @@ func setCountry(client *cloud.Client, deviceID string, siid, piid int, value str
 		"value": value,
 	}
 
-	result, err := client.rpcRequest(context.Background(), deviceID, "set_country", params)
+	result, err := cloud.Client.rpcRequest(context.Background(), deviceID, "set_country", params)
 	if err != nil {
 		return err
 	}
