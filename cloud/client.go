@@ -660,19 +660,19 @@ func New(country string, username string, password string) *Client {
 }
 
 // homeRequest gửi một yêu cầu đến endpoint home RPC.
-func (c *Client) rpcRequest(ctx context.Context, did, method string, params map[string]any) (result json.RawMessage, err error) {
-	data := map[string]any{
-		"id":        1,
-		"method":    method,
-		"accessKey": "IOS00026747c5acafc2",
-		"params":    params,
-	}
-	var (
-		ret *Response
-	)
-	ret = c.Request(ctx, newRequest("/home/rpc/"+did, data))
-	if !ret.IsOK() {
-		err = ret.Error
-	}
-	return
+func (c *Client) RpcRequest(ctx context.Context, did, method string, params map[string]any) (result json.RawMessage, err error) {
+    data := map[string]any{
+        "id":        1,
+        "method":    method,
+        "accessKey": "IOS00026747c5acafc2",
+        "params":    params,
+    }
+    var (
+        ret *Response
+    )
+    ret = c.Request(ctx, newRequest("/home/rpc/"+did, data))
+    if !ret.IsOK() {
+        err = ret.Error
+    }
+    return
 }
