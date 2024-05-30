@@ -661,6 +661,7 @@ func New(country string, username string, password string) *Client {
 
 // homeRequest gửi một yêu cầu đến endpoint home RPC.
 func (c *Client) RpcRequest(ctx context.Context, did, method string, params map[string]any) (result json.RawMessage, err error) {
+
 	data := map[string]any{
 		"id":        1,
 		"method":    method,
@@ -675,4 +676,5 @@ func (c *Client) RpcRequest(ctx context.Context, did, method string, params map[
 		err = ret.Error
 	}
 	return
+
 }
