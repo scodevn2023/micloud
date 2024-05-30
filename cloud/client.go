@@ -660,29 +660,30 @@ func New(country string, username string, password string) *Client {
 }
 
 
-func (c *Client) RpcRequest(ctx context.Context, did string ,ps ...*types.DeviceProperty) (err error) {
-	var (
-		ret *Response
-	)
-	ret = c.Request(ctx, newRequest("/home/rpc/"+did, map[string]any{
-		"params": ps,
-	}))
-	if !ret.IsOK() {
-		err = ret.Error
-		return
-	}
-	items := make([]*types.DeviceProperty, 0)
-	if err = json.Unmarshal(ret.Result, &items); err != nil {
-		return
-	}
-	for _, row := range items {
-		for _, p := range ps {
-			if p.SIID == row.SIID && p.PIID == row.PIID {
-				p.Value = row.Value
-				p.Code = row.Code
-				break
-			}
-		}
-	}
-	return
+func (c *Client) RpcRequest(ctx context.Context, method string, did string, ps ...*types.DeviceProperty) (err error) {
+    var (
+        ret *Response
+    )
+    ret = c.Request(ctx, newRequest("/home/rpc/"+did, map[string]any{
+        "method": method,
+        "params": ps,
+    }))
+    if !ret.IsOK() {
+        err = ret.Error
+        return
+    }
+    items := make([]*types.DeviceProperty, 0)
+    if err = json.Unmarshal(ret.Result, &items); err != nil {
+        return
+    }
+    for _, row := range items {
+        for _, p := range ps {
+            if p.SIID == row.SIID && p.PIID == row.PIID {
+                p.Value = row.Value
+                p.Code = row.Code
+                break
+            }
+        }
+    }
+    return
 }
