@@ -659,6 +659,7 @@ func New(country string, username string, password string) *Client {
 	return c
 }
 
+
 func (c *Client) RpcRequest(ctx context.Context, did string ,ps ...*types.DeviceProperty) (err error) {
 	var (
 		ret *Response
