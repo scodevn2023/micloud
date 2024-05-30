@@ -660,21 +660,38 @@ func New(country string, username string, password string) *Client {
 }
 
 // homeRequest gửi một yêu cầu đến endpoint home RPC.
+type ErrorResponse struct {
+    Code    int    `json:"code"`
+    Message string `json:"message"`
+}
+
+type Response struct {
+    Error ErrorResponse `json:"error"`
+    // các trường khác...
+}
+
+func (r *Response) IsOK() bool {
+    return r.Error.Code == 0
+}
+
+// homeRequest gửi một yêu cầu đến endpoint home RPC.
 func (c *Client) RpcRequest(ctx context.Context, did, method string, params map[string]any) (result json.RawMessage, err error) {
+    data := map[string]any{
+        "id":        1,
+        "method":    method,
+        "accessKey": "IOS00026747c5acafc2",
+        "params":    params,
+    }
 
-	data := map[string]any{
-		"id":        1,
-		"method":    method,
-		"accessKey": "IOS00026747c5acafc2",
-		"params":    params,
-	}
-	var (
-		ret *Response
-	)
-	ret = c.Request(ctx, newRequest("/home/rpc/"+did, data))
-	if !ret.IsOK() {
-		err = ret.Error
-	}
-	return
+    var ret Response
+    rawResponse := c.Request(ctx, newRequest("/home/rpc/"+did, data))
+    if err := json.Unmarshal(rawResponse, &ret); err != nil {
+        return nil, err
+    }
 
+    if !ret.IsOK() {
+        return nil, fmt.Errorf("API error: %s", ret.Error.Message)
+    }
+
+    return rawResponse, nil
 }
