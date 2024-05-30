@@ -22,8 +22,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
 	"github.com/scodevn2023/micloud/types"
+	
 )
 
 type Client struct {
@@ -660,7 +660,7 @@ func New(country string, username string, password string) *Client {
 }
 
 // homeRequest gửi một yêu cầu đến endpoint home RPC.
-func (c *Client) rpcRequest(ctx context.Context, did, method string, params map[string]any) (result json.RawMessage, err error) {
+func (c *Client) RpcRequest(ctx context.Context, did, method string, params map[string]any) (result json.RawMessage, err error) {
 	data := map[string]any{
 		"id":        1,
 		"method":    method,
