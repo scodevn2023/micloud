@@ -660,6 +660,7 @@ func New(country string, username string, password string) *Client {
 }
 
 
+
 func (c *Client) RpcRequest(ctx context.Context, did string, method string, params interface{}) (result json.RawMessage, err error) {
     url := c.BaseURL + "/home/rpc/" + did
 
@@ -706,3 +707,4 @@ func (c *Client) RpcRequest(ctx context.Context, did string, method string, para
 
     return response.Result, nil
 }
+
