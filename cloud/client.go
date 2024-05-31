@@ -660,29 +660,49 @@ func New(country string, username string, password string) *Client {
 }
 
 
-func (c *Client) RpcRequest(ctx context.Context, did string ,ps ...*types.DeviceProperty) (err error) {
-	var (
-		ret *Response
-	)
-	ret = c.Request(ctx, newRequest("/home/rpc/"+did, map[string]any{
-		"params": ps,
-	}))
-	if !ret.IsOK() {
-		err = ret.Error
-		return
-	}
-	items := make([]*types.DeviceProperty, 0)
-	if err = json.Unmarshal(ret.Result, &items); err != nil {
-		return
-	}
-	for _, row := range items {
-		for _, p := range ps {
-			if p.SIID == row.SIID && p.PIID == row.PIID {
-				p.Value = row.Value
-				p.Code = row.Code
-				break
-			}
-		}
-	}
-	return
+func (c *Client) RpcRequest(ctx context.Context, did string, method string, params interface{}) (result json.RawMessage, err error) {
+    url := c.BaseURL + "/home/rpc/" + did
+
+    reqBody := map[string]interface{}{
+        "method": method,
+        "params": params,
+    }
+
+    jsonData, err := json.Marshal(reqBody)
+    if err != nil {
+        return nil, err
+    }
+
+    req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(jsonData))
+    if err != nil {
+        return nil, err
+    }
+
+    req.Header.Set("Content-Type", "application/json")
+    req.SetBasicAuth(c.Username, c.Password)
+
+    resp, err := c.HTTPClient.Do(req)
+    if err != nil {
+        return nil, err
+    }
+    defer resp.Body.Close()
+
+    if resp.StatusCode != http.StatusOK {
+        return nil, errors.New("RPC request failed with status: " + resp.Status)
+    }
+
+    var response struct {
+        Result json.RawMessage `json:"result"`
+        Error  string          `json:"error"`
+    }
+
+    if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
+        return nil, err
+    }
+
+    if response.Error != "" {
+        return nil, errors.New(response.Error)
+    }
+
+    return response.Result, nil
 }
