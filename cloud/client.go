@@ -659,52 +659,20 @@ func New(country string, username string, password string) *Client {
 	return c
 }
 
-
-
-func (c *Client) RpcRequest(ctx context.Context, did string, method string, params interface{}) (result json.RawMessage, err error) {
-    url := c.BaseURL + "/home/rpc/" + did
-
-    reqBody := map[string]interface{}{
+func (c *Client) CallRPC(ctx context.Context, did string, method string, params interface{}) (*Response, error) {
+    reqData := map[string]interface{}{
         "method": method,
         "params": params,
     }
 
-    jsonData, err := json.Marshal(reqBody)
-    if err != nil {
-        return nil, err
+    req := newRequest("/home/rpc/" + did, reqData)
+    ret := c.Request(ctx, req)
+
+    if !ret.IsOK() {
+        return nil, ret.Error
     }
-
-    req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(jsonData))
-    if err != nil {
-        return nil, err
-    }
-
-    req.Header.Set("Content-Type", "application/json")
-    req.SetBasicAuth(c.Username, c.Password)
-
-    resp, err := c.HTTPClient.Do(req)
-    if err != nil {
-        return nil, err
-    }
-    defer resp.Body.Close()
-
-    if resp.StatusCode != http.StatusOK {
-        return nil, errors.New("RPC request failed with status: " + resp.Status)
-    }
-
-    var response struct {
-        Result json.RawMessage `json:"result"`
-        Error  string          `json:"error"`
-    }
-
-    if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
-        return nil, err
-    }
-
-    if response.Error != "" {
-        return nil, errors.New(response.Error)
-    }
-
-    return response.Result, nil
+    return ret, nil
 }
 
+
+  
