@@ -134,6 +134,7 @@ func (c *Client) loginInternal(ctx context.Context) (err error) {
 	if err = json.Unmarshal(buf, ret); err != nil {
 		return
 	}
+	fmt.Println("Login internal raw response:", string(buf)) // Log toàn bộ phản hồi
 	if ret.Code == 0 {
 		c.us.Location = ret.Location
 		c.us.AccessToken = ret.PassToken
@@ -141,7 +142,6 @@ func (c *Client) loginInternal(ctx context.Context) (err error) {
 		c.us.UserID = ret.UserId
 		c.us.Security = ret.Ssecurity
 	}
-	fmt.Println("Login internal response:", string(buf)) // Log toàn bộ phản hồi
 	fmt.Println("Login internal location:", c.us.Location) // Log trường location
 	return
 }
