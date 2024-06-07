@@ -37,60 +37,6 @@ type Client struct {
 	httpClient *http.Client
 }
 
-type userSecurity struct {
-	Sign         string
-	Location     string
-	AccessToken  string
-	CurrentUserID int64
-	UserID       int64
-	Security     string
-	ServiceToken string
-	Timestamp    int64
-	DeviceID     string
-}
-
-type loginSignResponse struct {
-	Sign string `json:"_sign"`
-}
-
-type loginInternalResponse struct {
-	Code      int    `json:"code"`
-	Location  string `json:"location"`
-	PassToken string `json:"passToken"`
-	CUserId   int64  `json:"cUserId"`
-	UserId    int64  `json:"userId"`
-	Ssecurity string `json:"ssecurity"`
-}
-
-type Response struct {
-	Code    int             `json:"code"`
-	Message string          `json:"message"`
-	Result  json.RawMessage `json:"result"`
-	Error   error
-}
-
-type Request struct {
-	Method string
-	Path   string
-	Data   map[string]interface{}
-}
-
-func newRequest(path string, data map[string]interface{}) *Request {
-	return &Request{
-		Method: http.MethodPost,
-		Path:   path,
-		Data:   data,
-	}
-}
-
-func (r *Response) IsOK() bool {
-	return r.Code == 0
-}
-
-func (r *Response) Decode(v interface{}) error {
-	return json.Unmarshal(r.Result, v)
-}
-
 func New(country, username, password string) *Client {
 	return &Client{
 		country:  country,
@@ -543,7 +489,7 @@ func (c *Client) GetDeviceProperties(ctx context.Context, ps ...*types.DevicePro
 	}
 	for _, row := range items {
 		for _, p := range ps {
-						if p.SIID == row.SIID && p.PIID == row.PIID {
+			if p.SIID == row.SIID && p.PIID == row.PIID {
 				p.Value = row.Value
 				p.Code = row.Code
 				p.Modtime = row.Modtime
