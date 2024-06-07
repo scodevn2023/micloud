@@ -391,14 +391,40 @@ func (c *Client) prepareLogin() {
 func (c *Client) login(ctx context.Context, force bool) (err error) {
 	var (
 		buf []byte
+		// tokenFile string
+		// us        *userSecurity
 	)
+	// if tokenFile, err = os.UserHomeDir(); err != nil {
+	// 	tokenFile = os.TempDir()
+	// }
+	// t := time.Now()
+	// timeStr := t.Format("YYYYMMDDHHMMSS")
+	// tokenFile = path.Join(tokenFile, timeStr, ".miio.token")
+	// fmt.Println(tokenFile)
+	// if buf, err = os.ReadFile(tokenFile); err == nil {
+	// 	us = &userSecurity{}
+	// 	if err = json.Unmarshal(buf, us); err == nil {
+	// 		// less 5 minute
+	// 		if !force && c.us != nil && time.Now().Unix()-c.us.Timestamp < 300 {
+	// 			return nil
+	// 		}
+
+	// 	}
+	// }
 	buf = make([]byte, 6)
 	rand.New(rand.NewSource(time.Now().UnixNano())).Read(buf)
+	// c.deviceID = strings.ToLower(base64.RawURLEncoding.EncodeToString(buf))
+	// c.prepareLogin()
+	// Clear the cached data for the current device
 	if c.us != nil {
 		c.us.DeviceID = ""
 	}
 	c.deviceID = ""
 	c.prepareLogin()
+
+	for _, cookie := range c.cookies {
+		cookie.Value = "" // Reset the value to an empty string
+	}
 
 	if err = c.getLoginSign(ctx); err != nil {
 		return
@@ -409,8 +435,12 @@ func (c *Client) login(ctx context.Context, force bool) (err error) {
 	if err = c.getLoginServeToken(ctx); err != nil {
 		return
 	}
+	// log.Printf(c.deviceID)
 	c.us.DeviceID = c.deviceID
 	c.us.Timestamp = time.Now().Unix()
+	// if buf, err = json.MarshalIndent(c.us, "", "\t"); err == nil {
+	// 	err = os.WriteFile(tokenFile, buf, 0644)
+	// }
 	return
 }
 
