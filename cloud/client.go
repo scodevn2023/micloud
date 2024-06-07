@@ -22,8 +22,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
 	"github.com/scodevn2023/micloud/types"
-	
 )
 
 type Client struct {
@@ -37,7 +37,6 @@ type Client struct {
 	httpClient *http.Client
 }
 
-// getLoginSign get login sign
 func (c *Client) getLoginSign(ctx context.Context) (err error) {
 	var (
 		uri string
@@ -78,6 +77,7 @@ func (c *Client) getLoginSign(ctx context.Context) (err error) {
 	if err = json.Unmarshal(buf, ret); err == nil {
 		c.us.Sign = ret.Sign
 	}
+	fmt.Println("Login sign:", c.us.Sign) // Thêm dòng log để kiểm tra giá trị Sign
 	return
 }
 
@@ -141,6 +141,7 @@ func (c *Client) loginInternal(ctx context.Context) (err error) {
 		c.us.UserID = ret.UserId
 		c.us.Security = ret.Ssecurity
 	}
+	fmt.Println("Login internal location:", c.us.Location) // Thêm dòng log để kiểm tra giá trị Location
 	return
 }
 
@@ -150,6 +151,12 @@ func (c *Client) getLoginServeToken(ctx context.Context) (err error) {
 		req *http.Request
 		res *http.Response
 	)
+	if c.us.Location == "" {
+		return errors.New("location is empty")
+	}
+	if !strings.HasPrefix(c.us.Location, "http://") && !strings.HasPrefix(c.us.Location, "https://") {
+		return errors.New("invalid location URL")
+	}
 	if req, err = http.NewRequest(http.MethodGet, c.us.Location, nil); err != nil {
 		return
 	}
@@ -384,31 +391,9 @@ func (c *Client) prepareLogin() {
 func (c *Client) login(ctx context.Context, force bool) (err error) {
 	var (
 		buf []byte
-		// tokenFile string
-		// us        *userSecurity
 	)
-	// if tokenFile, err = os.UserHomeDir(); err != nil {
-	// 	tokenFile = os.TempDir()
-	// }
-	// t := time.Now()
-	// timeStr := t.Format("YYYYMMDDHHMMSS")
-	// tokenFile = path.Join(tokenFile, timeStr, ".miio.token")
-	// fmt.Println(tokenFile)
-	// if buf, err = os.ReadFile(tokenFile); err == nil {
-	// 	us = &userSecurity{}
-	// 	if err = json.Unmarshal(buf, us); err == nil {
-	// 		// less 5 minute
-	// 		if !force && c.us != nil && time.Now().Unix()-c.us.Timestamp < 300 {
-	// 			return nil
-	// 		}
-
-	// 	}
-	// }
 	buf = make([]byte, 6)
 	rand.New(rand.NewSource(time.Now().UnixNano())).Read(buf)
-	// c.deviceID = strings.ToLower(base64.RawURLEncoding.EncodeToString(buf))
-	// c.prepareLogin()
-	// Clear the cached data for the current device
 	if c.us != nil {
 		c.us.DeviceID = ""
 	}
@@ -424,12 +409,8 @@ func (c *Client) login(ctx context.Context, force bool) (err error) {
 	if err = c.getLoginServeToken(ctx); err != nil {
 		return
 	}
-	// log.Printf(c.deviceID)
 	c.us.DeviceID = c.deviceID
 	c.us.Timestamp = time.Now().Unix()
-	// if buf, err = json.MarshalIndent(c.us, "", "\t"); err == nil {
-	// 	err = os.WriteFile(tokenFile, buf, 0644)
-	// }
 	return
 }
 
@@ -660,19 +641,16 @@ func New(country string, username string, password string) *Client {
 }
 
 func (c *Client) CallRPC(ctx context.Context, did string, method string, params interface{}) (*Response, error) {
-    reqData := map[string]interface{}{
-        "method": method,
-        "params": params,
-    }
+	reqData := map[string]interface{}{
+		"method": method,
+		"params": params,
+	}
 
-    req := newRequest("/home/rpc/" + did, reqData)
-    ret := c.Request(ctx, req)
+	req := newRequest("/home/rpc/"+did, reqData)
+	ret := c.Request(ctx, req)
 
-    if !ret.IsOK() {
-        return nil, ret.Error
-    }
-    return ret, nil
+	if !ret.IsOK() {
+		return nil, ret.Error
+	}
+	return ret, nil
 }
-
-
-  
