@@ -141,9 +141,11 @@ func (c *Client) loginInternal(ctx context.Context) (err error) {
 		c.us.UserID = ret.UserId
 		c.us.Security = ret.Ssecurity
 	}
-	fmt.Println("Login internal location:", c.us.Location) // Thêm dòng log để kiểm tra giá trị Location
+	fmt.Println("Login internal response:", string(buf)) // Log toàn bộ phản hồi
+	fmt.Println("Login internal location:", c.us.Location) // Log trường location
 	return
 }
+
 
 // getLoginServeToken get login server token
 func (c *Client) getLoginServeToken(ctx context.Context) (err error) {
