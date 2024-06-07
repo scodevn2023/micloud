@@ -22,8 +22,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
 	"github.com/scodevn2023/micloud/types"
-	
 )
 
 type Client struct {
@@ -660,19 +660,16 @@ func New(country string, username string, password string) *Client {
 }
 
 func (c *Client) CallRPC(ctx context.Context, did string, method string, params interface{}) (*Response, error) {
-    reqData := map[string]interface{}{
-        "method": method,
-        "params": params,
-    }
+	reqData := map[string]interface{}{
+		"method": method,
+		"params": params,
+	}
 
-    req := newRequest("/home/rpc/" + did, reqData)
-    ret := c.Request(ctx, req)
+	req := newRequest("/home/rpc/"+did, reqData)
+	ret := c.Request(ctx, req)
 
-    if !ret.IsOK() {
-        return nil, ret.Error
-    }
-    return ret, nil
+	if !ret.IsOK() {
+		return nil, ret.Error
+	}
+	return ret, nil
 }
-
-
-  
