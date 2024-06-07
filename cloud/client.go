@@ -146,7 +146,6 @@ func (c *Client) loginInternal(ctx context.Context) (err error) {
 	return
 }
 
-
 // getLoginServeToken get login server token
 func (c *Client) getLoginServeToken(ctx context.Context) (err error) {
 	var (
@@ -221,7 +220,7 @@ func (c *Client) sha1Signature(method string, uri string, qs url.Values, signNon
 	values := make([]string, 0, 5)
 	uri = strings.TrimPrefix(path.Clean(uri), "/app")
 	values = append(values, strings.ToUpper(method), uri)
-	for k, _ := range qs {
+	for k := range qs {
 		values = append(values, fmt.Sprintf("%s=%s", k, qs.Get(k)))
 	}
 	values = append(values, signNonce)
@@ -230,7 +229,7 @@ func (c *Client) sha1Signature(method string, uri string, qs url.Values, signNon
 	return base64.StdEncoding.EncodeToString(hash.Sum(nil))
 }
 
-// encodeQueryParams 编码请求
+// encodeQueryParams encode request
 func (c *Client) encodeQueryParams(method string, uri string, qs url.Values) (string, url.Values) {
 	var (
 		err       error
@@ -246,10 +245,10 @@ func (c *Client) encodeQueryParams(method string, uri string, qs url.Values) (st
 		return signNonce, qs
 	}
 	qs.Set("rc4_hash__", c.sha1Signature(method, uri, qs, signNonce))
-	for k, _ := range qs {
+	for k := range qs {
 		qs.Set(k, c.rc4Encrypt(signNonce, qs.Get(k)))
 	}
-	qs.Set("signature", c.sha1Signature(method, uri, qs, signNonce)) //这个必须放在第一位
+	qs.Set("signature", c.sha1Signature(method, uri, qs, signNonce)) // This must be set first
 	qs.Set("ssecurity", c.us.Security)
 	qs.Set("_nonce", noncestr)
 	return signNonce, qs
@@ -329,7 +328,7 @@ func (c *Client) doRequest(ctx context.Context, r *Request) (ret *Response) {
 	req.Header.Add("Accept-Encoding", "identity")
 	req.Header.Add("User-Agent", c.userAgent)
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-	//下面2个头大小写敏感
+	// Below headers are case-sensitive
 	req.Header["x-xiaomi-protocal-flag-cli"] = []string{"PROTOCAL-HTTP2"}
 	req.Header["MIOT-ENCRYPT-ALGORITHM"] = []string{"ENCRYPT-RC4"}
 
@@ -341,6 +340,11 @@ func (c *Client) doRequest(ctx context.Context, r *Request) (ret *Response) {
 	req.AddCookie(&http.Cookie{Name: "is_daylight", Value: "1"})
 	req.AddCookie(&http.Cookie{Name: "dst_offset", Value: "3600000"})
 	req.AddCookie(&http.Cookie{Name: "channel", Value: "MI_APP_STORE"})
+
+	for _, cookie := range req.Cookies() {
+		fmt.Println("Request cookie:", cookie) // Log các cookie trong yêu cầu
+	}
+
 	if res, ret.Error = c.httpClient.Do(req.WithContext(ctx)); ret.Error != nil {
 		ret.Code = ErrorHttpRequest
 		ret.Error = fmt.Errorf("http request error: %s", ret.Error.Error())
@@ -387,36 +391,16 @@ func (c *Client) prepareLogin() {
 		{Name: "deviceId", Value: c.deviceID, Domain: "mi.com"},
 		{Name: "deviceId", Value: c.deviceID, Domain: "xiaomi.com"},
 	}
+	fmt.Println("Prepared cookies:", c.cookies) // Log các cookie đã chuẩn bị
 }
 
 // login login mi cloud
 func (c *Client) login(ctx context.Context, force bool) (err error) {
 	var (
 		buf []byte
-		// tokenFile string
-		// us        *userSecurity
 	)
-	// if tokenFile, err = os.UserHomeDir(); err != nil {
-	// 	tokenFile = os.TempDir()
-	// }
-	// t := time.Now()
-	// timeStr := t.Format("YYYYMMDDHHMMSS")
-	// tokenFile = path.Join(tokenFile, timeStr, ".miio.token")
-	// fmt.Println(tokenFile)
-	// if buf, err = os.ReadFile(tokenFile); err == nil {
-	// 	us = &userSecurity{}
-	// 	if err = json.Unmarshal(buf, us); err == nil {
-	// 		// less 5 minute
-	// 		if !force && c.us != nil && time.Now().Unix()-c.us.Timestamp < 300 {
-	// 			return nil
-	// 		}
-
-	// 	}
-	// }
 	buf = make([]byte, 6)
 	rand.New(rand.NewSource(time.Now().UnixNano())).Read(buf)
-	// c.deviceID = strings.ToLower(base64.RawURLEncoding.EncodeToString(buf))
-	// c.prepareLogin()
 	// Clear the cached data for the current device
 	if c.us != nil {
 		c.us.DeviceID = ""
@@ -437,12 +421,8 @@ func (c *Client) login(ctx context.Context, force bool) (err error) {
 	if err = c.getLoginServeToken(ctx); err != nil {
 		return
 	}
-	// log.Printf(c.deviceID)
 	c.us.DeviceID = c.deviceID
 	c.us.Timestamp = time.Now().Unix()
-	// if buf, err = json.MarshalIndent(c.us, "", "\t"); err == nil {
-	// 	err = os.WriteFile(tokenFile, buf, 0644)
-	// }
 	return
 }
 
@@ -525,7 +505,7 @@ func (c *Client) GetDevices(ctx context.Context) (devices []*DeviceInfo, err err
 		return
 	}
 	res := &deviceListResponse{}
-	if err = ret.Decode(res); err == nil {
+		if err = ret.Decode(res); err == nil {
 		devices = res.List
 	}
 	return
