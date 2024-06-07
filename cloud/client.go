@@ -23,7 +23,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/uole/miio/types"
+	"github.com/scodevn2023/micloud/types"
 )
 
 type Client struct {
