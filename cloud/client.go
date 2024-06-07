@@ -37,7 +37,6 @@ type Client struct {
 	httpClient *http.Client
 }
 
-// getLoginSign get login sign
 func (c *Client) getLoginSign(ctx context.Context) (err error) {
 	var (
 		uri string
@@ -78,6 +77,7 @@ func (c *Client) getLoginSign(ctx context.Context) (err error) {
 	if err = json.Unmarshal(buf, ret); err == nil {
 		c.us.Sign = ret.Sign
 	}
+	fmt.Println("Login sign:", c.us.Sign) // Thêm dòng log để kiểm tra giá trị Sign
 	return
 }
 
@@ -141,6 +141,7 @@ func (c *Client) loginInternal(ctx context.Context) (err error) {
 		c.us.UserID = ret.UserId
 		c.us.Security = ret.Ssecurity
 	}
+	fmt.Println("Login internal location:", c.us.Location) // Thêm dòng log để kiểm tra giá trị Location
 	return
 }
 
@@ -150,6 +151,12 @@ func (c *Client) getLoginServeToken(ctx context.Context) (err error) {
 		req *http.Request
 		res *http.Response
 	)
+	if c.us.Location == "" {
+		return errors.New("location is empty")
+	}
+	if !strings.HasPrefix(c.us.Location, "http://") && !strings.HasPrefix(c.us.Location, "https://") {
+		return errors.New("invalid location URL")
+	}
 	if req, err = http.NewRequest(http.MethodGet, c.us.Location, nil); err != nil {
 		return
 	}
@@ -661,4 +668,19 @@ func New(country string, username string, password string) *Client {
 	}
 	c.httpClient = &http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}}
 	return c
+}
+
+func (c *Client) CallRPC(ctx context.Context, did string, method string, params interface{}) (*Response, error) {
+	reqData := map[string]interface{}{
+		"method": method,
+		"params": params,
+	}
+
+	req := newRequest("/home/rpc/"+did, reqData)
+	ret := c.Request(ctx, req)
+
+	if !ret.IsOK() {
+		return nil, ret.Error
+	}
+	return ret, nil
 }
