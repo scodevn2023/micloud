@@ -32,7 +32,7 @@ type Client struct {
 	password   string
 	deviceID   string
 	userAgent  string
-	us         *userSecurity
+	us         *UserSecurity
 	cookies    []*http.Cookie
 	httpClient *http.Client
 }
@@ -42,7 +42,7 @@ func New(country, username, password string) *Client {
 		country:  country,
 		username: username,
 		password: password,
-		us:       &userSecurity{},
+		us:       &UserSecurity{},
 		httpClient: &http.Client{
 			Transport: &http.Transport{
 				TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
@@ -84,7 +84,7 @@ func (c *Client) getLoginSign(ctx context.Context) error {
 		buf = buf[pos:]
 	}
 
-	ret := &loginSignResponse{}
+	ret := &LoginSignResponse{}
 	if err := json.Unmarshal(buf, ret); err == nil {
 		c.us.Sign = ret.Sign
 	}
@@ -136,7 +136,7 @@ func (c *Client) loginInternal(ctx context.Context) error {
 		buf = buf[pos:]
 	}
 
-	ret := &loginInternalResponse{}
+	ret := &LoginInternalResponse{}
 	if err := json.Unmarshal(buf, ret); err != nil {
 		return err
 	}
@@ -385,7 +385,7 @@ func (c *Client) Login(ctx context.Context) error {
 }
 
 func (c *Client) HasNewMsg(ctx context.Context) bool {
-	ret := c.Request(ctx, newRequest("/v2/message/v2/check_new_msg", map[string]interface{}{"begin_at": time.Now().Unix() - 60}))
+	ret := c.Request(ctx, NewRequest("/v2/message/v2/check_new_msg", map[string]interface{}{"begin_at": time.Now().Unix() - 60}))
 	if ret.IsOK() {
 		b, _ := strconv.ParseBool(string(ret.Result))
 		return b
@@ -394,7 +394,7 @@ func (c *Client) HasNewMsg(ctx context.Context) bool {
 }
 
 func (c *Client) GetHomes(ctx context.Context) ([]*MiHome, error) {
-	ret := c.Request(ctx, newRequest("/v2/homeroom/gethome", map[string]interface{}{
+	ret := c.Request(ctx, NewRequest("/v2/homeroom/gethome", map[string]interface{}{
 		"fg":              true,
 		"fetch_share":     true,
 		"fetch_share_dev": true,
@@ -412,7 +412,7 @@ func (c *Client) GetHomes(ctx context.Context) ([]*MiHome, error) {
 }
 
 func (c *Client) GetHomeDevices(ctx context.Context, homeID int64) ([]*DeviceInfo, error) {
-	ret := c.Request(ctx, newRequest("/v2/home/home_device_list", map[string]interface{}{
+	ret := c.Request(ctx, NewRequest("/v2/home/home_device_list", map[string]interface{}{
 		"home_owner":         c.us.UserID,
 		"home_id":            homeID,
 		"fetch_share_dev":    true,
@@ -430,7 +430,7 @@ func (c *Client) GetHomeDevices(ctx context.Context, homeID int64) ([]*DeviceInf
 }
 
 func (c *Client) GetDevices(ctx context.Context) ([]*DeviceInfo, error) {
-	ret := c.Request(ctx, newRequest("/home/device_list", map[string]interface{}{
+	ret := c.Request(ctx, NewRequest("/home/device_list", map[string]interface{}{
 		"getVirtualModel":    true,
 		"getHuamiDevices":    1,
 		"get_split_device":   true,
@@ -447,7 +447,7 @@ func (c *Client) GetDevices(ctx context.Context) ([]*DeviceInfo, error) {
 }
 
 func (c *Client) GetLastMessage(ctx context.Context) ([]*SensorMessage, error) {
-	ret := c.Request(ctx, newRequest("/v2/message/v2/typelist", map[string]interface{}{}))
+	ret := c.Request(ctx, NewRequest("/v2/message/v2/typelist", map[string]interface{}{}))
 	if !ret.IsOK() {
 		return nil, ret.Error
 	}
@@ -459,7 +459,7 @@ func (c *Client) GetLastMessage(ctx context.Context) ([]*SensorMessage, error) {
 }
 
 func (c *Client) GetSceneHistories(ctx context.Context, homeID int64) ([]*SceneHistory, error) {
-	ret := c.Request(ctx, newRequest("/scene/history", map[string]interface{}{
+	ret := c.Request(ctx, NewRequest("/scene/history", map[string]interface{}{
 		"home_id":   homeID,
 		"uid":       c.us.UserID,
 		"owner_uid": c.us.UserID,
@@ -477,13 +477,13 @@ func (c *Client) GetSceneHistories(ctx context.Context, homeID int64) ([]*SceneH
 }
 
 func (c *Client) GetDeviceProperties(ctx context.Context, ps ...*types.DeviceProperty) error {
-	ret := c.Request(ctx, newRequest("/miotspec/prop/get", map[string]interface{}{
+	ret := c.Request(ctx, NewRequest("/miotspec/prop/get", map[string]interface{}{
 		"params": ps,
 	}))
 	if !ret.IsOK() {
 		return ret.Error
 	}
-	items := make([]*types.DeviceProperty, 0)
+		items := make([]*types.DeviceProperty, 0)
 	if err := json.Unmarshal(ret.Result, &items); err != nil {
 		return err
 	}
@@ -501,7 +501,7 @@ func (c *Client) GetDeviceProperties(ctx context.Context, ps ...*types.DevicePro
 }
 
 func (c *Client) SetDeviceProperties(ctx context.Context, ps ...*types.DeviceProperty) error {
-	ret := c.Request(ctx, newRequest("/miotspec/prop/set", map[string]interface{}{
+	ret := c.Request(ctx, NewRequest("/miotspec/prop/set", map[string]interface{}{
 		"params": ps,
 	}))
 	if !ret.IsOK() {
@@ -524,7 +524,7 @@ func (c *Client) SetDeviceProperties(ctx context.Context, ps ...*types.DevicePro
 }
 
 func (c *Client) ExecuteDeviceAction(ctx context.Context, args types.DeviceAction) error {
-	ret := c.Request(ctx, newRequest("/miotspec/action", map[string]interface{}{
+	ret := c.Request(ctx, NewRequest("/miotspec/action", map[string]interface{}{
 		"params": args,
 	}))
 	if !ret.IsOK() {
@@ -557,7 +557,7 @@ func (c *Client) CallRPC(ctx context.Context, did, method string, params interfa
 		"params": params,
 	}
 
-	req := newRequest("/home/rpc/"+did, reqData)
+	req := NewRequest("/home/rpc/"+did, reqData)
 	ret := c.Request(ctx, req)
 
 	if !ret.IsOK() {
