@@ -22,8 +22,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
 	"github.com/scodevn2023/micloud/types"
+	
 )
 
 type Client struct {
@@ -32,30 +32,23 @@ type Client struct {
 	password   string
 	deviceID   string
 	userAgent  string
-	us         *UserSecurity
+	us         *userSecurity
 	cookies    []*http.Cookie
 	httpClient *http.Client
 }
 
-func New(country, username, password string) *Client {
-	return &Client{
-		country:  country,
-		username: username,
-		password: password,
-		us:       &UserSecurity{},
-		httpClient: &http.Client{
-			Transport: &http.Transport{
-				TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-			},
-		},
-	}
-}
-
-func (c *Client) getLoginSign(ctx context.Context) error {
-	uri := "https://account.xiaomi.com/pass/serviceLogin?sid=xiaomiio&_json=true"
-	req, err := http.NewRequest(http.MethodGet, uri, nil)
-	if err != nil {
-		return err
+// getLoginSign get login sign
+func (c *Client) getLoginSign(ctx context.Context) (err error) {
+	var (
+		uri string
+		pos int
+		buf []byte
+		req *http.Request
+		res *http.Response
+	)
+	uri = "https://account.xiaomi.com/pass/serviceLogin?sid=xiaomiio&_json=true"
+	if req, err = http.NewRequest(http.MethodGet, uri, nil); err != nil {
+		return
 	}
 	req.Header.Add("User-Agent", c.userAgent)
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
@@ -63,37 +56,43 @@ func (c *Client) getLoginSign(ctx context.Context) error {
 		req.AddCookie(cookie)
 	}
 	req.AddCookie(&http.Cookie{Name: "userId", Value: c.username})
-
-	res, err := c.httpClient.Do(req.WithContext(ctx))
-	if err != nil {
-		return err
+	if res, err = c.httpClient.Do(req.WithContext(ctx)); err != nil {
+		return
 	}
-	defer res.Body.Close()
-
+	defer func() {
+		_ = res.Body.Close()
+	}()
 	if res.StatusCode != http.StatusOK {
-		return fmt.Errorf("http response %s", res.Status)
+		err = fmt.Errorf("http response %s", res.Status)
+		return
 	}
-
-	buf, err := io.ReadAll(res.Body)
-	if err != nil && !errors.Is(err, io.EOF) {
-		return err
+	if buf, err = io.ReadAll(res.Body); err != nil {
+		if !errors.Is(err, io.EOF) {
+			return
+		}
 	}
-
-	pos := bytes.IndexByte(buf, '{')
-	if pos > -1 {
+	if pos = bytes.IndexByte(buf, '{'); pos > -1 {
 		buf = buf[pos:]
 	}
-
-	ret := &LoginSignResponse{}
-	if err := json.Unmarshal(buf, ret); err == nil {
+	ret := &loginSignResponse{}
+	if err = json.Unmarshal(buf, ret); err == nil {
 		c.us.Sign = ret.Sign
 	}
-	return nil
+	return
 }
 
-func (c *Client) loginInternal(ctx context.Context) error {
-	uri := "https://account.xiaomi.com/pass/serviceLoginAuth2"
-	qs := url.Values{}
+// loginInternal login internal
+func (c *Client) loginInternal(ctx context.Context) (err error) {
+	var (
+		pos int
+		buf []byte
+		uri string
+		req *http.Request
+		res *http.Response
+		qs  url.Values
+	)
+	uri = "https://account.xiaomi.com/pass/serviceLoginAuth2"
+	qs = make(url.Values)
 	hash := md5.New()
 	hash.Write([]byte(c.password))
 	qs.Set("sid", "xiaomiio")
@@ -104,10 +103,8 @@ func (c *Client) loginInternal(ctx context.Context) error {
 	qs.Set("_sign", c.us.Sign)
 	qs.Set("_json", "true")
 	uri += "?" + qs.Encode()
-
-	req, err := http.NewRequest(http.MethodPost, uri, nil)
-	if err != nil {
-		return err
+	if req, err = http.NewRequest(http.MethodPost, uri, nil); err != nil {
+		return
 	}
 	req.Header.Add("User-Agent", c.userAgent)
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
@@ -115,32 +112,28 @@ func (c *Client) loginInternal(ctx context.Context) error {
 		req.AddCookie(cookie)
 	}
 	req.AddCookie(&http.Cookie{Name: "userId", Value: c.username})
-
-	res, err := c.httpClient.Do(req.WithContext(ctx))
-	if err != nil {
-		return err
+	if res, err = c.httpClient.Do(req.WithContext(ctx)); err != nil {
+		return
 	}
-	defer res.Body.Close()
-
+	defer func() {
+		_ = res.Body.Close()
+	}()
 	if res.StatusCode != http.StatusOK {
-		return fmt.Errorf("http response %s", res.Status)
+		err = fmt.Errorf("http response %s", res.Status)
+		return
 	}
-
-	buf, err := io.ReadAll(res.Body)
-	if err != nil && !errors.Is(err, io.EOF) {
-		return err
+	if buf, err = io.ReadAll(res.Body); err != nil {
+		if !errors.Is(err, io.EOF) {
+			return
+		}
 	}
-
-	pos := bytes.IndexByte(buf, '{')
-	if pos > -1 {
+	if pos = bytes.IndexByte(buf, '{'); pos > -1 {
 		buf = buf[pos:]
 	}
-
-	ret := &LoginInternalResponse{}
-	if err := json.Unmarshal(buf, ret); err != nil {
-		return err
+	ret := &loginInternalResponse{}
+	if err = json.Unmarshal(buf, ret); err != nil {
+		return
 	}
-
 	if ret.Code == 0 {
 		c.us.Location = ret.Location
 		c.us.AccessToken = ret.PassToken
@@ -148,13 +141,17 @@ func (c *Client) loginInternal(ctx context.Context) error {
 		c.us.UserID = ret.UserId
 		c.us.Security = ret.Ssecurity
 	}
-	return nil
+	return
 }
 
-func (c *Client) getLoginServeToken(ctx context.Context) error {
-	req, err := http.NewRequest(http.MethodGet, c.us.Location, nil)
-	if err != nil {
-		return err
+// getLoginServeToken get login server token
+func (c *Client) getLoginServeToken(ctx context.Context) (err error) {
+	var (
+		req *http.Request
+		res *http.Response
+	)
+	if req, err = http.NewRequest(http.MethodGet, c.us.Location, nil); err != nil {
+		return
 	}
 	req.Header.Add("User-Agent", c.userAgent)
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
@@ -162,49 +159,60 @@ func (c *Client) getLoginServeToken(ctx context.Context) error {
 		req.AddCookie(cookie)
 	}
 	req.AddCookie(&http.Cookie{Name: "userId", Value: c.username})
-
-	res, err := c.httpClient.Do(req.WithContext(ctx))
-	if err != nil {
-		return err
+	if res, err = c.httpClient.Do(req.WithContext(ctx)); err != nil {
+		return
 	}
-	defer res.Body.Close()
-
+	defer func() {
+		_ = res.Body.Close()
+	}()
 	for _, cookie := range res.Cookies() {
 		if cookie.Name == "serviceToken" {
 			c.us.ServiceToken = cookie.Value
 		}
 	}
 	c.us.Timestamp = time.Now().Unix()
-	return nil
+	return
 }
 
+// buildRequestUri build client request uri
 func (c *Client) buildRequestUri(uri string) string {
-	prefix := "https://" + c.country + ".api.io.mi.com/app"
+	var prefix string
 	if c.country == "cn" {
 		prefix = "https://api.io.mi.com/app"
+	} else {
+		prefix = "https://" + c.country + ".api.io.mi.com/app"
 	}
-	if len(uri) > 0 && uri[0] != '/' {
-		uri = "/" + uri
+	if len(uri) > 0 {
+		if uri[0] != '/' {
+			uri = "/" + uri
+		}
 	}
 	return prefix + uri
 }
 
-func (c *Client) signatureNonce(nonce string) (string, error) {
-	b1, err := base64.StdEncoding.DecodeString(c.us.Security)
-	if err != nil {
-		return "", err
+// signatureNonce signature nonce
+func (c *Client) signatureNonce(nonce string) (sign string, err error) {
+	var (
+		b1 []byte
+		b2 []byte
+	)
+	if b1, err = base64.StdEncoding.DecodeString(c.us.Security); err != nil {
+		return
 	}
-	b2, err := base64.StdEncoding.DecodeString(nonce)
-	if err != nil {
-		return "", err
+	if b2, err = base64.StdEncoding.DecodeString(nonce); err != nil {
+		return
 	}
 	buf := sha256.Sum256(append(b1, b2...))
-	return base64.StdEncoding.EncodeToString(buf[:]), nil
+	sign = base64.StdEncoding.EncodeToString(buf[:])
+	return
 }
 
-func (c *Client) sha1Signature(method, uri string, qs url.Values, signNonce string) string {
-	values := []string{strings.ToUpper(method), strings.TrimPrefix(path.Clean(uri), "/app")}
-	for k := range qs {
+// sha1Signature signature values
+func (c *Client) sha1Signature(method string, uri string, qs url.Values, signNonce string) string {
+	values := make([]string, 0, 5)
+	uri = strings.TrimPrefix(path.Clean(uri), "/app")
+	values = append(values, strings.ToUpper(method), uri)
+	for k, _ := range qs {
 		values = append(values, fmt.Sprintf("%s=%s", k, qs.Get(k)))
 	}
 	values = append(values, signNonce)
@@ -213,86 +221,106 @@ func (c *Client) sha1Signature(method, uri string, qs url.Values, signNonce stri
 	return base64.StdEncoding.EncodeToString(hash.Sum(nil))
 }
 
-func (c *Client) encodeQueryParams(method, uri string, qs url.Values) (string, url.Values) {
-	nonce := make([]byte, 12)
+// encodeQueryParams 编码请求
+func (c *Client) encodeQueryParams(method string, uri string, qs url.Values) (string, url.Values) {
+	var (
+		err       error
+		nonce     []byte
+		noncestr  string
+		signNonce string
+	)
+	nonce = make([]byte, 12)
 	rand.New(rand.NewSource(time.Now().UnixNano())).Read(nonce)
 	binary.BigEndian.PutUint32(nonce[8:], uint32(time.Now().UnixMilli()/60000))
-	noncestr := base64.StdEncoding.EncodeToString(nonce)
-	signNonce, err := c.signatureNonce(noncestr)
-	if err != nil {
+	noncestr = base64.StdEncoding.EncodeToString(nonce)
+	if signNonce, err = c.signatureNonce(noncestr); err != nil {
 		return signNonce, qs
 	}
 	qs.Set("rc4_hash__", c.sha1Signature(method, uri, qs, signNonce))
-	for k := range qs {
+	for k, _ := range qs {
 		qs.Set(k, c.rc4Encrypt(signNonce, qs.Get(k)))
 	}
-	qs.Set("signature", c.sha1Signature(method, uri, qs, signNonce))
+	qs.Set("signature", c.sha1Signature(method, uri, qs, signNonce)) //这个必须放在第一位
 	qs.Set("ssecurity", c.us.Security)
 	qs.Set("_nonce", noncestr)
 	return signNonce, qs
 }
 
-func (c *Client) rc4Encrypt(signNonce, payload string) string {
-	buf, err := base64.StdEncoding.DecodeString(signNonce)
-	if err != nil {
-		return ""
+// rc4Encrypt encrypt
+func (c *Client) rc4Encrypt(signNonce, payload string) (s string) {
+	var (
+		err    error
+		buf    []byte
+		cipher *rc4.Cipher
+	)
+	if buf, err = base64.StdEncoding.DecodeString(signNonce); err != nil {
+		return
 	}
-	cipher, err := rc4.NewCipher(buf)
-	if err != nil {
-		return ""
+	if cipher, err = rc4.NewCipher(buf); err != nil {
+		return
 	}
+	buf = make([]byte, 1024)
+	cipher.XORKeyStream(buf, buf)
 	dst := make([]byte, len(payload))
 	cipher.XORKeyStream(dst, []byte(payload))
 	return base64.StdEncoding.EncodeToString(dst)
 }
 
-func (c *Client) rc4Decrypt(signNonce string, payload []byte) ([]byte, error) {
-	buf, err := base64.StdEncoding.DecodeString(signNonce)
-	if err != nil {
-		return nil, err
+// rc4Decrypt decrypt
+func (c *Client) rc4Decrypt(signNonce string, payload []byte) (dst []byte, err error) {
+	var (
+		n      int
+		buf    []byte
+		cipher *rc4.Cipher
+	)
+	if buf, err = base64.StdEncoding.DecodeString(signNonce); err != nil {
+		return
 	}
-	cipher, err := rc4.NewCipher(buf)
-	if err != nil {
-		return nil, err
+	if cipher, err = rc4.NewCipher(buf); err != nil {
+		return
 	}
+	buf = make([]byte, 1024)
+	cipher.XORKeyStream(buf, buf)
 	dlen := base64.StdEncoding.DecodedLen(len(payload))
 	buf = make([]byte, dlen)
-	n, err := base64.StdEncoding.Decode(buf, payload)
-	if err != nil {
-		return nil, err
+	if n, err = base64.StdEncoding.Decode(buf, payload); err != nil {
+		return
 	}
-	dst := make([]byte, len(buf[:n]))
+	dst = make([]byte, len(buf[:n]))
 	cipher.XORKeyStream(dst, buf[:n])
-	return dst, nil
+	return
 }
 
-func (c *Client) doRequest(ctx context.Context, r *Request) *Response {
-	ret := &Response{}
+// doRequest execute an crypto http request
+func (c *Client) doRequest(ctx context.Context, r *Request) (ret *Response) {
+	var (
+		buf       []byte
+		qs        url.Values
+		req       *http.Request
+		res       *http.Response
+		signNonce string
+	)
 	if c.us == nil || c.us.Security == "" || c.us.ServiceToken == "" {
 		ret.Error = errors.New("please log in to the system first")
-		return ret
+		return
 	}
-
-	qs := url.Values{}
+	ret = &Response{}
+	qs = make(url.Values)
 	if r.Data != nil {
-		buf, err := json.Marshal(r.Data)
-		if err != nil {
-			ret.Error = err
-			return ret
+		if buf, ret.Error = json.Marshal(r.Data); ret.Error == nil {
+			qs.Set("data", string(buf))
 		}
-		qs.Set("data", string(buf))
 	}
-
-	signNonce, qs := c.encodeQueryParams(r.Method, r.Path, qs)
+	signNonce, qs = c.encodeQueryParams(r.Method, r.Path, qs)
 	reqUri := c.buildRequestUri(r.Path) + "?" + qs.Encode()
-	req, err := http.NewRequest(r.Method, reqUri, nil)
-	if err != nil {
-		ret.Error = err
-		return ret
+	if req, ret.Error = http.NewRequest(r.Method, reqUri, nil); ret.Error != nil {
+		ret.Code = ErrorCreateRequest
+		return
 	}
 	req.Header.Add("Accept-Encoding", "identity")
 	req.Header.Add("User-Agent", c.userAgent)
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	//下面2个头大小写敏感
 	req.Header["x-xiaomi-protocal-flag-cli"] = []string{"PROTOCAL-HTTP2"}
 	req.Header["MIOT-ENCRYPT-ALGORITHM"] = []string{"ENCRYPT-RC4"}
 
@@ -304,47 +332,44 @@ func (c *Client) doRequest(ctx context.Context, r *Request) *Response {
 	req.AddCookie(&http.Cookie{Name: "is_daylight", Value: "1"})
 	req.AddCookie(&http.Cookie{Name: "dst_offset", Value: "3600000"})
 	req.AddCookie(&http.Cookie{Name: "channel", Value: "MI_APP_STORE"})
-
-	res, err := c.httpClient.Do(req.WithContext(ctx))
-	if err != nil {
-		ret.Error = fmt.Errorf("http request error: %s", err.Error())
-		return ret
+	if res, ret.Error = c.httpClient.Do(req.WithContext(ctx)); ret.Error != nil {
+		ret.Code = ErrorHttpRequest
+		ret.Error = fmt.Errorf("http request error: %s", ret.Error.Error())
+		return
 	}
-	defer res.Body.Close()
-
+	defer func() {
+		_ = res.Body.Close()
+	}()
 	if res.StatusCode != http.StatusOK {
 		ret.Code = res.StatusCode
 		ret.Error = fmt.Errorf("http server response %d: %s", res.StatusCode, res.Status)
-		return ret
+		return
 	}
-
-	buf, err := io.ReadAll(res.Body)
-	if err != nil {
-		ret.Error = err
-		return ret
+	if buf, ret.Error = io.ReadAll(res.Body); ret.Error != nil {
+		ret.Code = ErrorInvalidResponse
+		return
 	}
-
-	buf, err = c.rc4Decrypt(signNonce, buf)
-	if err != nil {
-		ret.Error = err
-		return ret
+	if buf, ret.Error = c.rc4Decrypt(signNonce, buf); ret.Error != nil {
+		ret.Code = ErrorInvalidResponse
+		return
 	}
-
-	if err := json.Unmarshal(buf, ret); err != nil {
-		ret.Error = err
-		return ret
+	if ret.Error = json.Unmarshal(buf, ret); ret.Error != nil {
+		ret.Code = ErrorInvalidResponse
+		return
 	}
-
 	if ret.Code != 0 {
 		ret.Error = errors.New(ret.Message)
+		return
 	}
-	return ret
+	return
 }
 
+// buildUserAgent build user agent
 func (c *Client) buildUserAgent(deviceID string) string {
 	return fmt.Sprintf("Android-7.1.1-1.0.0-ONEPLUS A3010-136-%s APP/xiaomi.smarthome APPV/62830", strings.ToUpper(deviceID))
 }
 
+// prepareLogin login prepare
 func (c *Client) prepareLogin() {
 	c.userAgent = c.buildUserAgent(c.deviceID)
 	c.cookies = []*http.Cookie{
@@ -355,37 +380,68 @@ func (c *Client) prepareLogin() {
 	}
 }
 
-func (c *Client) login(ctx context.Context, force bool) error {
-	buf := make([]byte, 6)
-	rand.New(rand.NewSource(time.Now().UnixNano())).Read(buf)
+// login login mi cloud
+func (c *Client) login(ctx context.Context, force bool) (err error) {
+	var (
+		buf []byte
+		// tokenFile string
+		// us        *userSecurity
+	)
+	// if tokenFile, err = os.UserHomeDir(); err != nil {
+	// 	tokenFile = os.TempDir()
+	// }
+	// t := time.Now()
+	// timeStr := t.Format("YYYYMMDDHHMMSS")
+	// tokenFile = path.Join(tokenFile, timeStr, ".miio.token")
+	// fmt.Println(tokenFile)
+	// if buf, err = os.ReadFile(tokenFile); err == nil {
+	// 	us = &userSecurity{}
+	// 	if err = json.Unmarshal(buf, us); err == nil {
+	// 		// less 5 minute
+	// 		if !force && c.us != nil && time.Now().Unix()-c.us.Timestamp < 300 {
+	// 			return nil
+	// 		}
 
+	// 	}
+	// }
+	buf = make([]byte, 6)
+	rand.New(rand.NewSource(time.Now().UnixNano())).Read(buf)
+	// c.deviceID = strings.ToLower(base64.RawURLEncoding.EncodeToString(buf))
+	// c.prepareLogin()
+	// Clear the cached data for the current device
 	if c.us != nil {
 		c.us.DeviceID = ""
 	}
 	c.deviceID = ""
 	c.prepareLogin()
 
-	if err := c.getLoginSign(ctx); err != nil {
-		return err
+	if err = c.getLoginSign(ctx); err != nil {
+		return
 	}
-	if err := c.loginInternal(ctx); err != nil {
-		return err
+	if err = c.loginInternal(ctx); err != nil {
+		return
 	}
-	if err := c.getLoginServeToken(ctx); err != nil {
-		return err
+	if err = c.getLoginServeToken(ctx); err != nil {
+		return
 	}
-
+	// log.Printf(c.deviceID)
 	c.us.DeviceID = c.deviceID
 	c.us.Timestamp = time.Now().Unix()
-	return nil
+	// if buf, err = json.MarshalIndent(c.us, "", "\t"); err == nil {
+	// 	err = os.WriteFile(tokenFile, buf, 0644)
+	// }
+	return
 }
 
-func (c *Client) Login(ctx context.Context) error {
+// Login login mi cloud
+func (c *Client) Login(ctx context.Context) (err error) {
 	return c.login(ctx, false)
 }
 
+// HasNewMsg checking has new message
 func (c *Client) HasNewMsg(ctx context.Context) bool {
-	ret := c.Request(ctx, NewRequest("/v2/message/v2/check_new_msg", map[string]interface{}{"begin_at": time.Now().Unix() - 60}))
+	var ret *Response
+	ret = c.Request(ctx, newRequest("/v2/message/v2/check_new_msg", map[string]any{"begin_at": time.Now().Unix() - 60}))
 	if ret.IsOK() {
 		b, _ := strconv.ParseBool(string(ret.Result))
 		return b
@@ -393,8 +449,12 @@ func (c *Client) HasNewMsg(ctx context.Context) bool {
 	return false
 }
 
-func (c *Client) GetHomes(ctx context.Context) ([]*MiHome, error) {
-	ret := c.Request(ctx, NewRequest("/v2/homeroom/gethome", map[string]interface{}{
+// GetHomes get mijia homes
+func (c *Client) GetHomes(ctx context.Context) (homes []*MiHome, err error) {
+	var (
+		ret *Response
+	)
+	ret = c.Request(ctx, newRequest("/v2/homeroom/gethome", map[string]any{
 		"fg":              true,
 		"fetch_share":     true,
 		"fetch_share_dev": true,
@@ -402,17 +462,22 @@ func (c *Client) GetHomes(ctx context.Context) ([]*MiHome, error) {
 		"app_ver":         7,
 	}))
 	if !ret.IsOK() {
-		return nil, ret.Error
+		err = ret.Error
+		return
 	}
 	res := &homeListResponse{}
-	if err := ret.Decode(res); err != nil {
-		return nil, err
+	if err = ret.Decode(res); err == nil {
+		homes = res.HomeList
 	}
-	return res.HomeList, nil
+	return
 }
 
-func (c *Client) GetHomeDevices(ctx context.Context, homeID int64) ([]*DeviceInfo, error) {
-	ret := c.Request(ctx, NewRequest("/v2/home/home_device_list", map[string]interface{}{
+// GetHomeDevices get mi home devices
+func (c *Client) GetHomeDevices(ctx context.Context, homeID int64) (devices []*DeviceInfo, err error) {
+	var (
+		ret *Response
+	)
+	ret = c.Request(ctx, newRequest("/v2/home/home_device_list", map[string]any{
 		"home_owner":         c.us.UserID,
 		"home_id":            homeID,
 		"fetch_share_dev":    true,
@@ -420,46 +485,62 @@ func (c *Client) GetHomeDevices(ctx context.Context, homeID int64) ([]*DeviceInf
 		"support_smart_home": true,
 	}))
 	if !ret.IsOK() {
-		return nil, ret.Error
+		err = ret.Error
+		return
 	}
 	res := &homeDeviceListResponse{}
-	if err := json.Unmarshal(ret.Result, res); err != nil {
-		return nil, err
+	if err = json.Unmarshal(ret.Result, res); err == nil {
+		devices = res.Devices
 	}
-	return res.Devices, nil
+	return
 }
 
-func (c *Client) GetDevices(ctx context.Context) ([]*DeviceInfo, error) {
-	ret := c.Request(ctx, NewRequest("/home/device_list", map[string]interface{}{
+// GetDevices get all devices
+func (c *Client) GetDevices(ctx context.Context) (devices []*DeviceInfo, err error) {
+	var (
+		ret *Response
+	)
+
+	ret = c.Request(ctx, newRequest("/home/device_list", map[string]any{
 		"getVirtualModel":    true,
 		"getHuamiDevices":    1,
 		"get_split_device":   true,
 		"support_smart_home": true,
 	}))
 	if !ret.IsOK() {
-		return nil, ret.Error
+		err = ret.Error
+		return
 	}
 	res := &deviceListResponse{}
-	if err := ret.Decode(res); err != nil {
-		return nil, err
+	if err = ret.Decode(res); err == nil {
+		devices = res.List
 	}
-	return res.List, nil
+	return
 }
 
-func (c *Client) GetLastMessage(ctx context.Context) ([]*SensorMessage, error) {
-	ret := c.Request(ctx, NewRequest("/v2/message/v2/typelist", map[string]interface{}{}))
+// GetLastMessage get last message
+func (c *Client) GetLastMessage(ctx context.Context) (messages []*SensorMessage, err error) {
+	var (
+		ret *Response
+	)
+	ret = c.Request(ctx, newRequest("/v2/message/v2/typelist", map[string]any{}))
 	if !ret.IsOK() {
-		return nil, ret.Error
+		err = ret.Error
+		return
 	}
 	res := &sensorMessageResponse{}
-	if err := json.Unmarshal(ret.Result, res); err != nil {
-		return nil, err
+	if err = json.Unmarshal(ret.Result, res); err == nil {
+		messages = res.Messages
 	}
-	return res.Messages, nil
+	return
 }
 
-func (c *Client) GetSceneHistories(ctx context.Context, homeID int64) ([]*SceneHistory, error) {
-	ret := c.Request(ctx, NewRequest("/scene/history", map[string]interface{}{
+// GetSceneHistories get scene histories
+func (c *Client) GetSceneHistories(ctx context.Context, homeID int64) (histories []*SceneHistory, err error) {
+	var (
+		ret *Response
+	)
+	ret = c.Request(ctx, newRequest("/scene/history", map[string]any{
 		"home_id":   homeID,
 		"uid":       c.us.UserID,
 		"owner_uid": c.us.UserID,
@@ -467,25 +548,31 @@ func (c *Client) GetSceneHistories(ctx context.Context, homeID int64) ([]*SceneH
 		"limit":     15,
 	}))
 	if !ret.IsOK() {
-		return nil, ret.Error
+		err = ret.Error
+		return
 	}
 	res := &sceneHistoryResponse{}
-	if err := ret.Decode(res); err != nil {
-		return nil, err
+	if err = ret.Decode(res); err == nil {
+		histories = res.History
 	}
-	return res.History, nil
+	return
 }
 
-func (c *Client) GetDeviceProperties(ctx context.Context, ps ...*types.DeviceProperty) error {
-	ret := c.Request(ctx, NewRequest("/miotspec/prop/get", map[string]interface{}{
+// GetDeviceProperties get device properties
+func (c *Client) GetDeviceProperties(ctx context.Context, ps ...*types.DeviceProperty) (err error) {
+	var (
+		ret *Response
+	)
+	ret = c.Request(ctx, newRequest("/miotspec/prop/get", map[string]any{
 		"params": ps,
 	}))
 	if !ret.IsOK() {
-		return ret.Error
+		err = ret.Error
+		return
 	}
-		items := make([]*types.DeviceProperty, 0)
-	if err := json.Unmarshal(ret.Result, &items); err != nil {
-		return err
+	items := make([]*types.DeviceProperty, 0)
+	if err = json.Unmarshal(ret.Result, &items); err != nil {
+		return
 	}
 	for _, row := range items {
 		for _, p := range ps {
@@ -497,19 +584,24 @@ func (c *Client) GetDeviceProperties(ctx context.Context, ps ...*types.DevicePro
 			}
 		}
 	}
-	return nil
+	return
 }
 
-func (c *Client) SetDeviceProperties(ctx context.Context, ps ...*types.DeviceProperty) error {
-	ret := c.Request(ctx, NewRequest("/miotspec/prop/set", map[string]interface{}{
+// SetDeviceProperties set device properties
+func (c *Client) SetDeviceProperties(ctx context.Context, ps ...*types.DeviceProperty) (err error) {
+	var (
+		ret *Response
+	)
+	ret = c.Request(ctx, newRequest("/miotspec/prop/set", map[string]any{
 		"params": ps,
 	}))
 	if !ret.IsOK() {
-		return ret.Error
+		err = ret.Error
+		return
 	}
 	items := make([]*types.DeviceProperty, 0)
-	if err := json.Unmarshal(ret.Result, &items); err != nil {
-		return err
+	if err = json.Unmarshal(ret.Result, &items); err != nil {
+		return
 	}
 	for _, row := range items {
 		for _, p := range ps {
@@ -520,19 +612,24 @@ func (c *Client) SetDeviceProperties(ctx context.Context, ps ...*types.DevicePro
 			}
 		}
 	}
-	return nil
+	return
 }
 
-func (c *Client) ExecuteDeviceAction(ctx context.Context, args types.DeviceAction) error {
-	ret := c.Request(ctx, NewRequest("/miotspec/action", map[string]interface{}{
+// ExecuteDeviceAction execute action
+func (c *Client) ExecuteDeviceAction(ctx context.Context, args types.DeviceAction) (err error) {
+	var (
+		ret *Response
+	)
+	ret = c.Request(ctx, newRequest("/miotspec/action", map[string]any{
 		"params": args,
 	}))
 	if !ret.IsOK() {
-		return ret.Error
+		err = ret.Error
 	}
-	return nil
+	return
 }
 
+// Request do http request
 func (c *Client) Request(ctx context.Context, r *Request) *Response {
 	var (
 		err       error
@@ -551,18 +648,31 @@ __retry:
 	return res
 }
 
-func (c *Client) CallRPC(ctx context.Context, did, method string, params interface{}) (*Response, error) {
-	reqData := map[string]interface{}{
-		"method": method,
-		"params": params,
+func New(country string, username string, password string) *Client {
+	c := &Client{
+		country:  country,
+		username: username,
+		password: password,
+		us:       &userSecurity{},
 	}
-
-	req := NewRequest("/home/rpc/"+did, reqData)
-	ret := c.Request(ctx, req)
-
-	if !ret.IsOK() {
-		return nil, ret.Error
-	}
-	return ret, nil
+	c.httpClient = &http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}}
+	return c
 }
 
+func (c *Client) CallRPC(ctx context.Context, did string, method string, params interface{}) (*Response, error) {
+    reqData := map[string]interface{}{
+        "method": method,
+        "params": params,
+    }
+
+    req := newRequest("/home/rpc/" + did, reqData)
+    ret := c.Request(ctx, req)
+
+    if !ret.IsOK() {
+        return nil, ret.Error
+    }
+    return ret, nil
+}
+
+
+  
