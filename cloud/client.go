@@ -38,15 +38,15 @@ type Client struct {
 }
 
 type userSecurity struct {
-	Sign        string
-	Location    string
-	AccessToken string
+	Sign         string
+	Location     string
+	AccessToken  string
 	CurrentUserID int64
-	UserID      int64
-	Security    string
+	UserID       int64
+	Security     string
 	ServiceToken string
-	Timestamp   int64
-	DeviceID    string
+	Timestamp    int64
+	DeviceID     string
 }
 
 type loginSignResponse struct {
@@ -54,12 +54,12 @@ type loginSignResponse struct {
 }
 
 type loginInternalResponse struct {
-	Code       int    `json:"code"`
-	Location   string `json:"location"`
-	PassToken  string `json:"passToken"`
-	CUserId    int64  `json:"cUserId"`
-	UserId     int64  `json:"userId"`
-	Ssecurity  string `json:"ssecurity"`
+	Code      int    `json:"code"`
+	Location  string `json:"location"`
+	PassToken string `json:"passToken"`
+	CUserId   int64  `json:"cUserId"`
+	UserId    int64  `json:"userId"`
+	Ssecurity string `json:"ssecurity"`
 }
 
 type Response struct {
@@ -543,8 +543,7 @@ func (c *Client) GetDeviceProperties(ctx context.Context, ps ...*types.DevicePro
 	}
 	for _, row := range items {
 		for _, p := range ps {
-			if p.SIID == row.SIID
-			&& p.PIID == row.PIID {
+						if p.SIID == row.SIID && p.PIID == row.PIID {
 				p.Value = row.Value
 				p.Code = row.Code
 				p.Modtime = row.Modtime
@@ -620,3 +619,4 @@ func (c *Client) CallRPC(ctx context.Context, did, method string, params interfa
 	}
 	return ret, nil
 }
+
