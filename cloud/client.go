@@ -15,6 +15,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"math/rand"
 	"net/http"
 	"net/url"
@@ -134,7 +135,6 @@ func (c *Client) loginInternal(ctx context.Context) (err error) {
 	if err = json.Unmarshal(buf, ret); err != nil {
 		return
 	}
-	fmt.Println("Login internal raw response:", string(buf)) // Log toàn bộ phản hồi
 	if ret.Code == 0 {
 		c.us.Location = ret.Location
 		c.us.AccessToken = ret.PassToken
@@ -142,6 +142,7 @@ func (c *Client) loginInternal(ctx context.Context) (err error) {
 		c.us.UserID = ret.UserId
 		c.us.Security = ret.Ssecurity
 	}
+	fmt.Println("Login internal response:", string(buf))   // Log toàn bộ phản hồi
 	fmt.Println("Login internal location:", c.us.Location) // Log trường location
 	return
 }
@@ -406,11 +407,11 @@ func (c *Client) login(ctx context.Context, force bool) (err error) {
 		c.us.DeviceID = ""
 	}
 	c.deviceID = ""
-	c.prepareLogin()
 
 	for _, cookie := range c.cookies {
 		cookie.Value = "" // Reset the value to an empty string
 	}
+	c.prepareLogin()
 
 	if err = c.getLoginSign(ctx); err != nil {
 		return
@@ -425,10 +426,19 @@ func (c *Client) login(ctx context.Context, force bool) (err error) {
 	c.us.Timestamp = time.Now().Unix()
 	return
 }
+func (c *Client) ClearSession() {
+	c.us = &userSecurity{}
+	c.cookies = nil
+	c.deviceID = ""
+}
 
 // Login login mi cloud
 func (c *Client) Login(ctx context.Context) (err error) {
-	return c.login(ctx, false)
+	if err = c.login(ctx, false); err != nil {
+		log.Println("Login error:", err)
+		return err
+	}
+	return nil
 }
 
 // HasNewMsg checking has new message
@@ -505,7 +515,7 @@ func (c *Client) GetDevices(ctx context.Context) (devices []*DeviceInfo, err err
 		return
 	}
 	res := &deviceListResponse{}
-		if err = ret.Decode(res); err == nil {
+	if err = ret.Decode(res); err == nil {
 		devices = res.List
 	}
 	return
