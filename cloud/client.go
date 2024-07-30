@@ -184,7 +184,22 @@ func (c *Client) getLoginServeToken(ctx context.Context) (err error) {
 }
 
 // buildRequestUri build client request uri
-func (c *Client) buildRequestUri(uri string) string {
+func (c *Client) buildRequestUriRpc(urirpc string) string {
+	var prefix string
+	if c.country == "cn" {
+		prefix = "https://api.io.mi.com/app"
+	} else {
+		prefix = "https://" + c.country + ".api.io.mi.com/app"
+	}
+	if len(uri) > 0 {
+		if urirpc[0] != '/' {
+			urirpc = "/" + uri
+		}
+	}
+	return prefix + uri
+}
+// buildRequesUriRpc for client
+func (c *Client) buildRequestUri(urirpc string) string {
 	var prefix string
 	if c.country == "cn" {
 		prefix = "https://core.api.mijia.tech/app"
@@ -198,7 +213,6 @@ func (c *Client) buildRequestUri(uri string) string {
 	}
 	return prefix + uri
 }
-
 // signatureNonce signature nonce
 func (c *Client) signatureNonce(nonce string) (sign string, err error) {
 	var (
