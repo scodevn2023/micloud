@@ -193,7 +193,7 @@ func (c *Client) buildRequestUriRpc(urirpc string) string {
 		prefix = "https://" + c.country + ".core.api.mijia.tech/app"
 		
 	}
-	if len(uri) > 0 {
+	if len(urirpc) > 0 {
 		if urirpc[0] != '/' {
 			urirpc = "/" + urirpc
 		}
