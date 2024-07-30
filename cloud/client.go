@@ -98,7 +98,7 @@ func (c *Client) loginInternal(ctx context.Context) (err error) {
 	hash.Write([]byte(c.password))
 	qs.Set("sid", "xiaomiio")
 	qs.Set("hash", strings.ToUpper(hex.EncodeToString(hash.Sum(nil))))
-	qs.Set("callback", "https://sts.core.api.mijia.tech/sts")
+	qs.Set("callback", "https://sts.api.io.mi.com/sts")
 	qs.Set("qs", "%3Fsid%3Dxiaomiio%26_json%3Dtrue")
 	qs.Set("user", c.username)
 	qs.Set("_sign", c.us.Sign)
