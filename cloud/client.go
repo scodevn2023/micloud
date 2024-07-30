@@ -187,9 +187,11 @@ func (c *Client) getLoginServeToken(ctx context.Context) (err error) {
 func (c *Client) buildRequestUriRpc(urirpc string) string {
 	var prefix string
 	if c.country == "cn" {
-		prefix = "https://api.io.mi.com/app"
+		prefix = "https://core.api.mijia.tech/app"
+		
 	} else {
-		prefix = "https://" + c.country + ".api.io.mi.com/app"
+		prefix = "https://" + c.country + ".core.api.mijia.tech/app"
+		
 	}
 	if len(uri) > 0 {
 		if urirpc[0] != '/' {
@@ -202,9 +204,9 @@ func (c *Client) buildRequestUriRpc(urirpc string) string {
 func (c *Client) buildRequestUri(urirpc string) string {
 	var prefix string
 	if c.country == "cn" {
-		prefix = "https://core.api.mijia.tech/app"
+		prefix = "https://api.io.mi.com/app"
 	} else {
-		prefix = "https://" + c.country + ".core.api.mijia.tech/app"
+		prefix = "https://" + c.country + ".api.io.mi.com/app"
 	}
 	if len(uri) > 0 {
 		if uri[0] != '/' {
