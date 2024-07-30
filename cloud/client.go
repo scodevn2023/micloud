@@ -684,7 +684,7 @@ func (c *Client) CallRPC(ctx context.Context, did string, method string, params 
 		"params": params,
 	}
 
-	req := newRequest("/home/rpc/"+did, reqData)
+	req := newRequestRpc("/home/rpc/"+did, reqData)
 	ret := c.Request(ctx, req)
 
 	if !ret.IsOK() {
