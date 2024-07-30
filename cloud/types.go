@@ -215,10 +215,10 @@ func (r *Response) IsOK() bool {
 func (r *Response) Decode(v any) (err error) {
 	return json.Unmarshal(r.Result, v)
 }
-func newRequestrpc(uri_rpc string, data any) *Request {
+func newRequestrpc(urirpc string, data any) *Request {
 	return &Request{
 		Method: http.MethodPost,
-		Path:   uri_rpc,
+		Path:   urirpc,
 		Data:   data,
 	}
 
