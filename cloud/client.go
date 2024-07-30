@@ -98,7 +98,7 @@ func (c *Client) loginInternal(ctx context.Context) (err error) {
 	hash.Write([]byte(c.password))
 	qs.Set("sid", "xiaomiio")
 	qs.Set("hash", strings.ToUpper(hex.EncodeToString(hash.Sum(nil))))
-	qs.Set("callback", "https://sts.api.io.mi.com/sts")
+	qs.Set("callback", "https://sts.core.api.mijia.tech/sts")
 	qs.Set("qs", "%3Fsid%3Dxiaomiio%26_json%3Dtrue")
 	qs.Set("user", c.username)
 	qs.Set("_sign", c.us.Sign)
@@ -187,9 +187,9 @@ func (c *Client) getLoginServeToken(ctx context.Context) (err error) {
 func (c *Client) buildRequestUri(uri string) string {
 	var prefix string
 	if c.country == "cn" {
-		prefix = "https://api.io.mi.com/app"
+		prefix = "https://core.api.mijia.tech/app"
 	} else {
-		prefix = "https://" + c.country + ".api.io.mi.com/app"
+		prefix = "https://" + c.country + ".core.api.mijia.tech/app"
 	}
 	if len(uri) > 0 {
 		if uri[0] != '/' {
