@@ -222,6 +222,8 @@ func newRequestRpc(urirpc string, data any) *Request {
 		Data:   data,
 	}
 
+}
+
 func newRequest(uri string, data any) *Request {
 	return &Request{
 		Method: http.MethodPost,
