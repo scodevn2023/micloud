@@ -195,13 +195,13 @@ func (c *Client) buildRequestUriRpc(urirpc string) string {
 	}
 	if len(uri) > 0 {
 		if urirpc[0] != '/' {
-			urirpc = "/" + uri
+			urirpc = "/" + urirpc
 		}
 	}
-	return prefix + uri
+	return prefix + urirpc
 }
-// buildRequesUriRpc for client
-func (c *Client) buildRequestUri(urirpc string) string {
+
+func (c *Client) buildRequestUri(uri string) string {
 	var prefix string
 	if c.country == "cn" {
 		prefix = "https://api.io.mi.com/app"
